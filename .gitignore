@@ -1,0 +1,48 @@
+# Build directories
+Debug/
+Release/
+ipch/
+bin/
+Archive/
+
+# Bloated Windows Databases
+*.sdf
+*.opensdf
+*.suo
+*.exp
+*.db
+*.pdb
+*.idb
+*.ilk
+*.opendb
+*.log
+*.lastbuildstate
+
+# Compiled files
+*.slo
+*.lo
+*.o
+*.obj
+*.exe
+
+# Precompiled Headers
+*.gch
+*.pch
+*.idb
+*.pdb
+*.opendb
+
+# Visual studio stuff
+*.user
+
+Dependencies/OSHGui/Include
+docs/_site/
+Gemfile.lock
+GWToolbox/~*.tmp
+GWToolbox.aps
+
+# Sublime Text stuff
+*.sublime-project*
+*.sublime-workspace*
+.vs/
+build/
