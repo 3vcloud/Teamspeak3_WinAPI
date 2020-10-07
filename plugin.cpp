@@ -47,6 +47,8 @@ static struct TS3Functions ts3Functions;
 
 static char* pluginID = NULL;
 
+static UINT WM_TEAMSPEAK3_JSON_API_STARTED = 0;
+
 /*********************************** Required functions ************************************/
 /*
  * If any of these required functions is not implemented, TS3 will refuse to load the plugin
@@ -123,18 +125,19 @@ int refreshAll() {
     int ret = ERROR_ok;
     if (!is_connected()) {
         // Not fully connected; make sure client and server vars are flushed
-        if (instance.server.id) {
+        if (instance.server.host) {
             instance.resetServerVariables();
             instance.sendAllInfo();
         }
-        instance.server.id = 0;
+        instance.server.host[0] = 0;
         return 0;
     }
-    bool new_connection = !instance.server.id;
+    bool new_connection = !instance.server.host;
+    need_to_send |= new_connection;
     char* s;
     if ((ret = ts3Functions.getServerVariableAsString(serverConnectionHandlerID, VIRTUALSERVER_NAME, &s)) != ERROR_ok) {
         API::onLogMessage("Failed to get server name, code 0x%04x", ret);
-        return 1;
+        goto send_if_needed;
     }
     if (strcmp(s, server.name) != 0) {
         need_to_send = true;
@@ -145,11 +148,11 @@ int refreshAll() {
         // Get server info
         if ((ret = ts3Functions.getServerConnectInfo(serverConnectionHandlerID, server.host, &server.port, server.password, sizeof(server.password))) != ERROR_ok) {
             API::onLogMessage("Failed to get getServerConnectInfo, code 0x%04x", ret);
-            return 1;
+            goto send_if_needed;
         }
         if ((ret = ts3Functions.getServerVariableAsString(serverConnectionHandlerID, VIRTUALSERVER_NAME, &s)) != ERROR_ok) {
             API::onLogMessage("Failed to get server name, code 0x%04x", ret);
-            return 1;
+            goto send_if_needed;
         }
         strncpy_s(server.name, s, sizeof(server.name) - 1);
         ts3Functions.freeMemory(s);
@@ -160,13 +163,13 @@ int refreshAll() {
 
     if ((ret = ts3Functions.getClientID(serverConnectionHandlerID, &server.my_client_id)) != ERROR_ok) {
         API::onLogMessage("Failed to get my id, code 0x%04x", ret);
-        return 1;
+        goto send_if_needed;
     }
     // Update all connected users
     anyID* clientIDs;
     if ((ret = ts3Functions.getClientList(serverConnectionHandlerID, &clientIDs)) != ERROR_ok) {
         API::onLogMessage("Failed to get getClientList, code 0x%04x", ret);
-        return 1;
+        goto send_if_needed;
     }
     bool has_changed = false;
     
@@ -175,17 +178,15 @@ int refreshAll() {
         need_to_send |= has_changed;
     }
     ts3Functions.freeMemory(clientIDs);
-
+send_if_needed:
     if (need_to_send) {
         instance.sendAllInfo();
     }
-    return 0;
+    return ret;
 }
 int ts3plugin_updateAPIServer() {
     return refreshAll();
 }
-
-
 
 /*
  * Custom code called right after loading the plugin. Returns 0 on success, 1 on failure.
@@ -193,6 +194,8 @@ int ts3plugin_updateAPIServer() {
  */
 int ts3plugin_init() { 
     TS3_API::Instance();
+    WM_TEAMSPEAK3_JSON_API_STARTED = RegisterWindowMessageW(L"WM_TEAMSPEAK3_JSON_API_STARTED");
+    SendNotifyMessageW(HWND_BROADCAST, WM_TEAMSPEAK3_JSON_API_STARTED, NULL, NULL);
     return 0; 
 }
 /* Custom code called right before the plugin is unloaded */

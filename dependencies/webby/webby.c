@@ -891,13 +891,13 @@ static int is_websocket_request(struct WebbyConnection* conn)
   if (NULL == (hdr = WebbyFindHeader(conn, "Connection")))
     return 0;
 
-  if (0 != strcasecmp(hdr, "Upgrade"))
+  if (NULL == strstr(hdr, "Upgrade"))
     return 0;
 
   if (NULL == (hdr = WebbyFindHeader(conn, "Upgrade")))
     return 0;
 
-  if (0 != strcasecmp(hdr, "websocket"))
+  if (NULL == strstr(hdr, "websocket"))
     return 0;
 
   return 1;

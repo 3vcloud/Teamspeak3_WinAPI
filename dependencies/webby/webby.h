@@ -165,6 +165,8 @@ WebbyServerMemoryNeeded(const struct WebbyServerConfig *config);
 struct WebbyServer*
 WebbyServerInit(struct WebbyServerConfig *config, void *memory, size_t memory_size);
 
+int is_websocket_request(struct WebbyConnection* conn);
+
 /* Update the server. Call frequently (at least once per frame). */
 void
 WebbyServerUpdate(struct WebbyServer *srv);

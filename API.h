@@ -1,4 +1,6 @@
 #pragma once
+
+
 #include <cstdio>
 #include <cstdlib>
 
@@ -79,6 +81,7 @@ private:
     int writeJson(struct WebbyConnection* connection, nlohmann::json & json);
     // Write out to a connection
     int write(struct WebbyConnection* connection, const char* response, struct WebbyHeader* headers = nullptr, int header_count = 0);
+    int writeHttp(struct WebbyConnection* connection, const char* response, struct WebbyHeader* headers = nullptr, int header_count = 0);
     bool isWebsocketConnection(struct WebbyConnection* connection);
 public:
     static TS3_API& Instance() {

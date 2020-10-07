@@ -8,6 +8,7 @@
 # define _WINSOCK_DEPRECATED_NO_WARNINGS  
 #endif
 #include "API.h"
+#include "plugin.h"
 
 #include "dependencies/webby/webby.c"
 
@@ -101,12 +102,11 @@ int TS3_API::onHttpRequest(struct WebbyConnection* connection) {
         read_len = sizeof(buf) - 1;
     if (WebbyRead(connection, buf, read_len))
         return 1;
-    return Instance().sendAllInfo(connection);
+    Instance().sendAllInfo(connection);
+    return 0;
 }
 int TS3_API::onWebsocketConnection(struct WebbyConnection* connection) {
-    onLogMessage("onWebsocketConnection unsupported");
-    connection->user_data = (void*)1;
-    return 0; // Not supported atm
+    return 0; // Allow all
 }
 int TS3_API::writeJson(struct WebbyConnection* connection, std::string& message) {
     WebbyHeader headers[1] = { {"Content-Type","application/json"} };
@@ -126,13 +126,11 @@ bool TS3_API::isWebsocketConnection(struct WebbyConnection* connection) {
 }
 int TS3_API::write(struct WebbyConnection* connection, const char* response, struct WebbyHeader* headers, int header_count) {
     size_t response_len = strlen(response);
-    if (isWebsocketConnection(connection)) {
-        if (WebbyBeginSocketFrame(connection, WEBBY_WS_OP_TEXT_FRAME))
-            return 1;
-        int ok = WebbyWrite(connection, response, response_len);
-        //int ok = WebbyPrintf(connection, "%s", response);
+    if (is_websocket_request(connection)) {
+        WebbyBeginSocketFrame(connection, WEBBY_WS_OP_TEXT_FRAME);
+        WebbyPrintf(connection, "%s\r\n", response);
         WebbyEndSocketFrame(connection);
-        return ok;
+        return 0;
     }
     else {
         size_t response_len = strlen(response);
@@ -272,7 +270,7 @@ int TS3_API::sendAllInfo(struct WebbyConnection* connection) {
     std::lock_guard<std::recursive_mutex> guard(mutex);
     nlohmann::json jsonClients;
     nlohmann::json jsonBody;
-    for (auto it : clients) {
+    for (auto& it : clients) {
         TS3User* client = it.second;
         if (!client) continue;
         nlohmann::json clientJson;
@@ -369,6 +367,13 @@ void TS3_API::update() {
     std::lock_guard<std::recursive_mutex> guard(mutex);
     if (ws_server)
         WebbyServerUpdate(ws_server);
+    static clock_t last_update = 0;
+    if (!last_update)
+        last_update = clock();
+    if (clock() - last_update > 2 * CLOCKS_PER_SEC) {
+        last_update = clock();
+        refreshAll();
+    }
 }
 TS3_API::TS3User* TS3_API::getUser(anyID clientId) {
     std::lock_guard<std::recursive_mutex> guard(mutex);
